@@ -1,0 +1,83 @@
+   Package gflow provides a mechanism for defining and processing
+   event-driven flows.
+
+   Such a flow accepts events one at a time and advances the flow depending on
+   whether or not the event meets the required conditions.
+
+   Let a, b, c ... equal a set of conditions for advancing a flow
+   Let A, B, C ... equal a set of events that meet the relevant conditions
+
+   A flow can be composed of these conditions using the operators
+
+   THEN OR AND
+
+   For example, given the flow defined as:
+
+   a.THEN(
+     a.THEN(b).OR(
+        c.THEN(d.AND(e)))
+   )
+
+   Any of the following series of events will complete the flow:
+
+   A -> C -> B
+   A -> C -> D
+   A -> A -> C -> B
+   A -> A -> C -> D -> E
+   A -> A -> C -> E -> DA
+
+   Because each event can only advance the flow by 1 step, the following would not complete the flow:
+
+   A -> B -> C (the A is NOT double-counted)
+
+   Given an action "action", a flow can be configured to fire that action
+   upon completion using the DO operator.
+
+   For example, given:
+
+   a.THEN(b).DO(action)
+
+   action will fire immediately after the sequence:
+
+   A -> B
+
+   Whether or not a given transition is allowed is encapsulated by a Test,
+   which is just function like this:
+
+   var a gflow.Test = func(data gflow.ProcessData) bool {
+       return // Test data and return a bool
+   }
+
+   Flows are defined by composing Tests using the aforementioned operators:
+
+   flowDefinition := a.THEN(b).OR(c.AND(d))
+
+   Event data is passed around flows in the form of a ProcessData,
+   which is just a map[string]string:
+
+   eventA := gflow.ProcessData{key: val, anotherKey: anotherVal}
+
+   To start a flow, simply call the function Start and pass it a ProcessData
+   for the first event:
+
+   flow = flowDefinition.Start(eventA)
+
+   Start returns a state representing the result of evaluating the event.
+   This will be either the original state if we did not advance 
+   or a new state if we did advance. 
+
+   Note that once constructed, a flow is immutable and thread-safe.
+
+   To continue advancing through a flow starting at the last state,
+   use the method Advance:
+
+   flow = flow.Advance(eventB)
+
+   Just liks Start, Advance returns a state.
+
+   To tell whether or not a flow is finished, use the method Finished:
+
+   isFinished = flow.Finished()
+
+   Once a flow is finished, it is legal to keep sending events to it,
+   but this will have no effect.
