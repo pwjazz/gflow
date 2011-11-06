@@ -6,23 +6,23 @@ import (
 )
 
 func main() {
-	var a gflow.Test = func(data gflow.ProcessData) bool {
+	var a gflow.Test = func(data gflow.EventData) bool {
 		fmt.Println("A?", data)
 		return "A" == data["key"]
 	}
-	var b gflow.Test = func(data gflow.ProcessData) bool {
+	var b gflow.Test = func(data gflow.EventData) bool {
 		fmt.Println("B?", data)
 		return "B" == data["key"]
 	}
-	var c gflow.Test = func(data gflow.ProcessData) bool {
+	var c gflow.Test = func(data gflow.EventData) bool {
 		fmt.Println("C?", data)
 		return "C" == data["key"]
 	}
-	var d gflow.Test = func(data gflow.ProcessData) bool {
+	var d gflow.Test = func(data gflow.EventData) bool {
 		fmt.Println("D?", data)
 		return "D" == data["key"]
 	}
-	var result = func(data gflow.ProcessData) {
+	var result = func(data gflow.EventData) {
 		fmt.Println("Done!")
 	}
 
@@ -30,10 +30,13 @@ func main() {
 
 	var advance = func(test string, order []string) {
 		fmt.Println("----- TESTING ", test, " ------")
-		flow = flow.Start(gflow.ProcessData{"key": order[0]})
-		for idx, key := range order {
-			if idx > 0 && !flow.Finished() {
-				flow = flow.Advance(gflow.ProcessData{"key": key})
+		flowDefinition := flow.Build()
+		currentId := flowDefinition.ID
+		for _, key := range order {
+		    state := flowDefinition.FindByID(currentId) 
+			if !state.Finished() {
+				state = state.Advance(gflow.EventData{"key": key})
+				currentId = state.ID
 			}
 		}
 		fmt.Println("")
