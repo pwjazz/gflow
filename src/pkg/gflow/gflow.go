@@ -90,7 +90,7 @@
    state := flow.Advance(eventA)
    state = state.Advance(eventB)
    
-   IMPORTANT: once constructed, a flow is safe to use in multiple threads.
+   IMPORTANT: flows are immutable and therefore are thread-safe.
 
    It is up to the client to maintain the current state of the flow by hanging
    on to the state returned by Advance(). To help clients manage long running
@@ -177,8 +177,10 @@
    flow is fully encapsulated by the state returned from Advance().
    Consequently, it is perfectly safe to use a single flow multiple times,
    from multiple threads.  In fact, all of the methods on a state, including
-   the compositional methods THEN, OR and AND, is thread-safe.  This is why they
-   all return a new state - the old ones are left alone.
+   the compositional methods THEN, OR and AND, are thread-safe.  The method
+   Advance() simply moves through the state tree and returns the appropriate
+   state.  The methods THEN, OR and AND actually create new states, leaving
+   the old state/flow untouched.
 */
 package gflow
 
