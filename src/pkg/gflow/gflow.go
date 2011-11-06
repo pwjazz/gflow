@@ -359,7 +359,7 @@ func (state *flowState) addAndStates(andedStates []*flowState, end *flowState) {
 			end.addIn(trans)
 		}
 	}
-} 
+}   
 
 // replace replaces the state at the given position in the given state slice
 // with the given state.
