@@ -19,16 +19,15 @@
 
    a.THEN(
      a.THEN(b).OR(
-        c.THEN(d.AND(e)))
+     c.THEN(
+        d.AND(e)))
    )
 
    Any of the following series of events will complete the flow:
 
-   A -> C -> B
-   A -> C -> D
-   A -> A -> C -> B
-   A -> A -> C -> D -> E
-   A -> A -> C -> E -> DA
+   A -> A -> B
+   A -> C -> D -> E
+   A -> C -> E -> D
 
    Because each event can only advance the flow by 1 step, the following would not complete the flow:
 
