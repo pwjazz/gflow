@@ -13,21 +13,18 @@
 
    For example, given the flow defined as:
 
-   a.THEN(
-     a.THEN(b).OR(
-     c.THEN(
-        d.AND(e)))
-   )
+   a.THEN(a).THEN(b)
+    .OR(c.AND(d))
 
    Any of the following series of events will complete the flow:
 
    A -> A -> B
-   A -> C -> D -> E
-   A -> C -> E -> D
+   C -> D
+   D -> C
 
    Because each event can only advance the flow by 1 step, the following would not complete the flow:
 
-   A -> B -> C (the A is NOT double-counted)
+   A -> B (the A is NOT double-counted)
 
    Given an action "action", a flow can be configured to fire that action
    upon completion using the DO operator.
@@ -41,7 +38,7 @@
    A -> B
 
    Whether or not a given transition is allowed is encapsulated by a Test,
-   which is just function like this:
+   which is just a function like this:
 
    var a gflow.Test = func(data gflow.ProcessData) bool {
        return // Test data and return a bool
@@ -49,7 +46,7 @@
 
    Flows are defined by composing Tests using the aforementioned operators:
 
-   flowDefinition := a.THEN(b).OR(c.AND(d))
+   flowDefinition := a.THEN(a).THEN(b).OR(c.AND(d))
 
    Event data is passed around flows in the form of a ProcessData,
    which is just a map[string]string:
@@ -65,8 +62,8 @@
    This will be either the original state if we did not advance 
    or a new state if we did advance. 
 
-   Note that once constructed, a flow is immutable and thread-safe.
-
+   IMPORTANT: once constructed, a flow is immutable and thread-safe.
+   
    To continue advancing through a flow starting at the last state,
    use the method Advance:
 
@@ -80,3 +77,7 @@
 
    Once a flow is finished, it is legal to keep sending events to it,
    but this will have no effect.
+   
+   Since the flows are stateless, it is up to the client code to track
+   the current state of the flow by hanging on to the return value
+   from each call to Start() and Advance().
