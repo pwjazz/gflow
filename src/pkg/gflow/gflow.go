@@ -47,7 +47,7 @@
    A -> A -> B
 
    Note: each event may trigger only 1 transition at a time, thus the above
-   flow is not satisfied by A -> B becauseA is not double counted.
+   flow is not satisfied by A -> B because A is not double counted.
 
    Note: events that do not trigger a transition are effectively ignored, thus
    the above flow is satisfied equally well by all three of the following:
@@ -93,14 +93,17 @@
    // This example uses the flow a THEN a THEN b OR (c AND d)
 
    // Define tests.  Tests are functions that accept an EventData and
-   // return a bool.  EventData is a map[string]string.
+   // return a bool.  EventData is the empty interface, meaning it can be
+   // any type of value.
+   
+   // In our example, we're just using strings as our EventData
 
    var a gflow.Test = func(data gflow.EventData) bool {
-       return "A" == data["key"]
+       return "A" == data.(string)
    }
 
    var b gflow.Test = func(data gflow.EventData) bool {
-       return "B" == data["key"]
+       return "B" == data.(string)
    }
 
    // ... and so on ...
@@ -116,13 +119,14 @@
 
    subFlow1 := a.THEN(a).THEN(b)
    subFlow2 := c.AND(d)
-   alternateFlow := subFlow1.OR(subFlow2)
-   // the above alternateFlow is equivalent to the original flow
+   redefined := subFlow1.OR(subFlow2)
+   // the above redefined is equivalent to the original flow
 
-   // As mentioned previously, events are just maps:
+   // As mentioned previously, events can be anything, and in our case are just
+   // strings.
 
-   eventA := gflow.EventData{key: "A"}
-   eventB := gflow.EventData{key: "B"}
+   eventA := "A"
+   eventB := "B"
 
    // To use a flow, call the Build() method and then Advance().
    // Build() basically just returns the root state of the flow so that
@@ -215,11 +219,12 @@ type Test func(data EventData) bool
 // Action is any function that executes at the end of a flow.
 type Action func(data EventData)
 
-// EventData is a map of data that is passed through the process flow to Tests and Actions.
-type EventData map[string]string
+// EventData any object
+type EventData interface {}
 
-// flowState represents a state in the flow, including inbound and outbound transitions
-// and, if applicable, the Action executed when this flowState is reached.
+// flowState represents a state in the flow, including inbound and outbound
+// transitions and, if applicable, the Action executed when this flowState is
+// reached.
 type flowState struct {
 	ID          int
 	in          []*transition
@@ -433,8 +438,8 @@ func (state *flowState) doCopy(stateCopies map[*flowState]*flowState) *flowState
 	return stateCopy
 }
 
-// addOrStates provides the functionality for recursively building a tree of states
-// that model an OR condition.
+// addOrStates provides the functionality for recursively building a tree of
+// states that model an OR condition.
 func (state *flowState) addOrStates(left *flowState, right *flowState, end *flowState) {
 	for _, trans := range left.out {
 		atEnd := len(trans.to.out) == 0
@@ -468,8 +473,8 @@ func (state *flowState) addOrStates(left *flowState, right *flowState, end *flow
 	}
 }
 
-// addAndStates provides the functionality for recursively building a tree of states
-// that model an AND condition.
+// addAndStates provides the functionality for recursively building a tree of
+// states that model an AND condition.
 func (state *flowState) addAndStates(andedStates []*flowState, end *flowState) {
 	atEnd := true
 	totalOuts := 0

@@ -9,7 +9,7 @@ func main() {
 	var makeTest = func(val string) gflow.Test {
 		return func(data gflow.EventData) bool {
 			fmt.Println(val+"?", data)
-			return val == data["key"]
+			return data.(string) == val
 		}
 	}
 
@@ -38,7 +38,7 @@ func main() {
 		for _, key := range order {
 			state := flowDefinition.FindByID(currentId)
 			if !state.Finished() {
-				state = state.Advance(gflow.EventData{"key": key})
+				state = state.Advance(key)
 				currentId = state.ID
 			}
 		}
