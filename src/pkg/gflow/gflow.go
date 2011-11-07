@@ -2,204 +2,207 @@
 // Use of this source code is governed by the BSD license found in LICENSE.
 
 /*
-   ----- Overview -----
+   --------------------------------- OVERVIEW ---------------------------------
    Package gflow provides a mechanism for defining and processing
    event-driven flows, which we'll just call 'flows'. These flows are
    immutable and side-effect free, making them safe to use in multi-threaded
    environments.  Flows can be composed of other flows, making it easy to
-   create relatively complex flows from intelligible constituent parts.
-   
-   A flow is a directed graph of states, sharing the same start and end states
-   and connected by one or more transitions between one state and the next.
-   Whether or not a particular transition is triggered is determined by a test.
-   
+   create relatively complex flows from smaller constituent parts.
+
+   A flow is a directed acyclic graph of states, sharing the same start and end
+   states and connected by one or more transitions from one state to the next.
+   Each transition is governed by a single test, which is specified as a
+   function.
+
+   ---------------------------- STRUCTURE OF FLOWS ----------------------------
    Let a, b, c ... equal a set of tests for advancing a flow
    Let A, B, C ... equal a set of events that pass the respective tests
    Let @ equal a state
    Let --a-->, --b-->, ... equal transitions dependent on events a, b, etc.
    Let A -> B -> C -> ... represent a sequence of events
-   
-   For example, the below is a 2-state flow with a single test a satisfied by
-   a one-event sequence:
-   
+
+   For example, the below is a diagram of a 2-state flow with a single test 'a'
+   satisfied by a one-event sequence:
+
    @ --a--> @
-   
+
    Satisfied by:
-   
+
    A
-   
+
    Multiple tests are composed into a flow using the following operators:
-   
-   THEN     a simple sequence
+
+   THEN     a sequence of tests
    OR       logical OR (commutative)
    AND      logical AND (commutative)
-   
+
    The flow a THEN a THEN b is structured as follows:
-   
+
    @ --a--> @ --a--> @ --b--> @
-   
+
    Satisfied by:
-   
+
    A -> A -> B
-   
-   The flow c AND d is structured as follows:
-   
-   |--c--> @ --d-->| 
-   @               @
-   |--d--> @ --c-->|
-   
-   Satisfied by:
-   
-   C -> D
-   D -> C
-   
-   The flow e OR f is structured as follows:
-   
-   |--e-->|
-   @      @
-   |--f-->|
-   
-   Satisfied by:
-   
-   E
-   F
-                 
-   Flows can be composed by the same operators as tests, for example:
-   
-   a THEN a THEN b OR (c AND d)
-   
-   Satisfied by:
-   
-   A -> A -> B
-   C -> D
-   D -> C
-   
+
    Note: each event may trigger only 1 transition at a time, thus the above
-   flow is not satisfied by A -> B (A is not double counted)
-   
+   flow is not satisfied by A -> B becauseA is not double counted.
+
    Note: events that do not trigger a transition are effectively ignored, thus
    the above flow is satisfied equally well by all three of the following:
-   
+
    A -> A -> B
    A -> X -> A -> Y -> B
    A -> A -> A -> A -> B
-   
-   ----- Code Example -----
-   
-   // This example shows the flow a THEN a THEN b OR (c AND d)
-   
+
+   The flow c AND d is structured as follows:
+
+   |--c--> @ --d-->| 
+   @               @
+   |--d--> @ --c-->|
+
+   Satisfied by:
+
+   C -> D
+   D -> C
+
+   The flow e OR f is structured as follows:
+
+   |--e-->|
+   @      @
+   |--f-->|
+
+   Satisfied by:
+
+   E
+   F
+
+   Flows can be composed by the same operators as tests, for example:
+
+   a THEN a THEN b OR (c AND d)
+
+   Satisfied by:
+
+   A -> A -> B
+   C -> D
+   D -> C
+
+   ------------------------------- CODING ------------------------------------
+
+   // This example uses the flow a THEN a THEN b OR (c AND d)
+
    // Define tests.  Tests are functions that accept an EventData and
-   // return a bool.  EventData is just a map[string]string.
-   
+   // return a bool.  EventData is a map[string]string.
+
    var a gflow.Test = func(data gflow.EventData) bool {
        return "A" == data["key"]
    }
-   
+
    var b gflow.Test = func(data gflow.EventData) bool {
        return "B" == data["key"]
    }
-   
+
    // ... and so on ...
 
    // The flow is defined using the methods THEN OR and AND, which return
    // state objects.
-   
+
    flow := a.THEN(a).THEN(b).OR(c.AND(d))
-   
-   // Each of these compositional methods accepts two tests and return a new
-   // state.  Since states can be composed with the same methods, it is possible
-   // to break apart the definition of flows however you find convenient.
-   
+
+   // Each of these compositional methods accepts two tests and returns a new
+   // state.  Since states can be composed using these same methods, it is
+   // possible to break apart the definition of flows however is convenient.
+
    subFlow1 := a.THEN(a).THEN(b)
    subFlow2 := c.AND(d)
    alternateFlow := subFlow1.OR(subFlow2)
-   
    // the above alternateFlow is equivalent to the original flow
-   
+
    // As mentioned previously, events are just maps:
-   
+
    eventA := gflow.EventData{key: "A"}
    eventB := gflow.EventData{key: "B"}
-   
+
    // To use a flow, call the Build() method and then Advance().
-   // Build() basically just returns the root state of the flow.
-   
+   // Build() basically just returns the root state of the flow so that
+   // you start from the beginning.  It also assigns ids to states, which is
+   // discussed further below.
+
    state := flow.Build().Advance(eventA)
-   
+
    // Advance() returns the next state based on whatever transition fired (or
    // did not fire).  Continue advancing by calling Advance() on the returned
    // states.
-   
+
    state = state.Advance(eventB)
-   
-   // We assigned the result from Advance() to a variable named "state".
+   state = state.Advance(eventC)
+   // ... and so on ...
+
+   // Above we assigned the result from Advance() to a variable named "state".
    // In reality, state and flow are interchangeable - it's all just states.
    // A flow can be referenced by any state in that flow, since they all
-   // share the same root.  The root can be obtained with the method Root().
-   
-   state = flow.Build().Advance(eventA).Advance(eventB)
-   
-   // Root() gets us back to the beginning of the flow
-   root := state.Root()
-   
+   // share the same root.
+
+   state = state.Build().Advance(eventA).Advance(eventB)
+
    // You can check whether a flow is finished by using the method Finished.
-   
+
    isFinished := state.Finished()
-   
+
    // Finished just means that there are no further transitions left.
 
    // Once a flow is finished, it is legal to keep sending events to it,
    // but this will have no effect.
-   
+
    // IMPORTANT - gflow states are immutable and their methods are free of
    // side-effects, making them safe to use in a multi-threaded environment.
-   
-   // The below line creates a new flow from subFlow1 that requires the
-   // additional step f
-   
+
+   // For example, the below line creates a new flow from subFlow1 that
+   // requires the additional step f.
+
    subFlow1 = subFlow1.THEN(f)
-   
+
    // Sub flow 1 is now @ --a--> @ -->a--> @ --b--> @ --f--> @
-   
-   // But the original subFlow1, which is part of the in-flight flow, has not
-   // changed, so the in-flight flow can safely continue.
-   
+
+   // Note how we assigned the result of THEN() to a variable.  The original
+   // state referred to by subFlow1 before the assignment has not changed.  So,
+   // any in-flight processes based on that flow can continue unhampered.
+
    // The same property of thread-safety holds true for Advance()
-   
+
    state1 := flow.Advance(eventA)
    state2 := flow.Advance(eventA)
-   
-   // The above two states are completely independent of each other
-   
+
+   // The above two states are completely independent of each other.
+
    // The stateless nature of gflow means that the responsibility for managing
    // the current state of flows is entirely the client program's.
-   
+
    // To help clients manage long running flows, gflow provides an ID property
    // on states and a FindByID method to retrieve a state from a flow by its ID.
-   
+
    state = flow.Advance(eventA)
    stateId = state.ID
    // Save ID
-   
    // Do some other stuff
-   
    // Later ...
    resumedState := flow.FindByID(stateId)
    resumedState = resumedState.Advance(eventB)
-   
+
    // IMPORTANT: if the definition of a flow changes, even if it is logically
    // equivalent to the previous definition, saved IDs will no longer be
    // reliable. Therefore, once you have started using a flow, you should
    // NEVER change its definition unless and until you no longer have any such
-   // flows in flight.
-   
-   flow1 := a.OR(b).Build()
-   flow2 := b.OR(a).Build()
-   
+   // flows in flight.  For example:
+
+   flow1 := a.AND(b).OR(c.AND(d)).Build()
+   flow2 := c.AND(d).OR(a.AND(b)).Build()
+
+   s1 := flow1.Advance(eventA)
+   id := s1.ID
+   s2 := flow2.FindByID(id)
+
    // Logically, these flows are the same, but the id's from these flows cannot
-   // be interchanged.  So, once you've built flow1 and are hanging on to ids
-   // from that flow, you should make sure to continue defining the flow using
-   // the same statement.
+   // be interchanged.  In this case, s1 and s2 are NOT equivalent!
 */
 package gflow
 
@@ -216,7 +219,7 @@ type EventData map[string]string
 // flowState represents a state in the flow, including inbound and outbound transitions
 // and, if applicable, the Action executed when this flowState is reached.
 type flowState struct {
-    ID          int
+	ID          int
 	in          []*transition
 	out         []*transition
 	andedStates []*flowState
@@ -241,9 +244,9 @@ type transition struct {
 // THEN constructs a sequential flow which terminates when the from and to
 // flowStates are reached in sequence. 
 func (from *flowState) THEN(to stateSource) *flowState {
-    newFrom := from.copy()
-    toState := to.state().copy()
-    for _, trans := range toState.Root().out {
+	newFrom := from.copy()
+	toState := to.state().copy()
+	for _, trans := range toState.root().out {
 		newFrom.addOut(trans)
 	}
 	return toState
@@ -266,8 +269,8 @@ func (state *flowState) OR(other stateSource) *flowState {
 	// Create a common end node
 	end := new(flowState)
 
-	root := state.Root()
-	otherRoot := otherState.Root()
+	root := state.root()
+	otherRoot := otherState.root()
 
 	start.addOrStates(root, otherRoot, end)
 	return end
@@ -299,7 +302,7 @@ func (state *flowState) AND(other stateSource) *flowState {
 
 	andedRoots := make([]*flowState, len(andedStates))
 	for i, state := range andedStates {
-		andedRoots[i] = state.Root()
+		andedRoots[i] = state.root()
 	}
 
 	start.addAndStates(andedRoots, end)
@@ -319,17 +322,9 @@ func (state *flowState) DO(action Action) *flowState {
 
 // Start starts a new flow from the root of the given flowState.
 func (state *flowState) Build() *flowState {
-	root := state.Root()
+	root := state.root()
 	root.assignIds(0)
-    return root
-}
-
-// root finds the root state of the flow, starting from the given state.
-func (state *flowState) Root() *flowState {
-    if len(state.in) == 0 {
-        return state
-    }
-    return state.in[0].from.Root()
+	return root
 }
 
 func (state *flowState) Advance(data EventData) *flowState {
@@ -349,16 +344,16 @@ func (state *flowState) Advance(data EventData) *flowState {
 }
 
 func (state *flowState) FindByID(id int) *flowState {
-    if state.ID == id {
-        return state
-    }
-    for _, trans := range state.out {
-        result := trans.to.FindByID(id)
-        if result != nil {
-            return result
-        }
-    }
-    return nil
+	if state.ID == id {
+		return state
+	}
+	for _, trans := range state.out {
+		result := trans.to.FindByID(id)
+		if result != nil {
+			return result
+		}
+	}
+	return nil
 }
 
 // Finished indicates whether or not the flow is finished.
@@ -396,36 +391,44 @@ func (state *flowState) addOut(trans *transition) {
 	state.out = append(state.out, trans)
 }
 
+// root finds the root state of the flow, starting from the given state.
+func (state *flowState) root() *flowState {
+	if len(state.in) == 0 {
+		return state
+	}
+	return state.in[0].from.root()
+}
+
 // copy makes a deep copy of the given state.  The copy is deep because
 // all transitively referenced states (inbound and outbound) are copied also.
 func (state *flowState) copy() *flowState {
-    stateCopies := make(map[*flowState]*flowState)
+	stateCopies := make(map[*flowState]*flowState)
 
-    state.Root().doCopy(stateCopies)
+	state.root().doCopy(stateCopies)
 
-    return stateCopies[state]
+	return stateCopies[state]
 }
 
 func (state *flowState) doCopy(stateCopies map[*flowState]*flowState) *flowState {
-    stateCopy := stateCopies[state]
-    if stateCopy == nil {
-        stateCopy = new(flowState)
-        stateCopies[state] = stateCopy
-    }
+	stateCopy := stateCopies[state]
+	if stateCopy == nil {
+		stateCopy = new(flowState)
+		stateCopies[state] = stateCopy
+	}
 
-    for _, out := range state.out {
-        newTo := out.to.doCopy(stateCopies)
-        trans := &transition{test: out.test, from: stateCopy, to: newTo}
-        stateCopy.addOut(trans)
-        newTo.addIn(trans)
-    }
+	for _, out := range state.out {
+		newTo := out.to.doCopy(stateCopies)
+		trans := &transition{test: out.test, from: stateCopy, to: newTo}
+		stateCopy.addOut(trans)
+		newTo.addIn(trans)
+	}
 
-    for _, andedState := range state.andedStates {
-        stateCopy.andedStates = append(stateCopy.andedStates, stateCopies[andedState])
-    }
+	for _, andedState := range state.andedStates {
+		stateCopy.andedStates = append(stateCopy.andedStates, stateCopies[andedState])
+	}
 
-    stateCopy.action = state.action
-    return stateCopy
+	stateCopy.action = state.action
+	return stateCopy
 }
 
 // addOrStates provides the functionality for recursively building a tree of states
@@ -492,12 +495,12 @@ func (state *flowState) addAndStates(andedStates []*flowState, end *flowState) {
 }
 
 func (state *flowState) assignIds(startingId int) int {
-    currentId := startingId + 1
-    state.ID = currentId
-    for _, trans := range state.out {
-        currentId = trans.to.assignIds(currentId)
-    }
-    return currentId
+	currentId := startingId + 1
+	state.ID = currentId
+	for _, trans := range state.out {
+		currentId = trans.to.assignIds(currentId)
+	}
+	return currentId
 }
 
 // replace replaces the state at the given position in the given state slice
