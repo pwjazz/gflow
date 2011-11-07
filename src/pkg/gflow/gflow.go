@@ -13,7 +13,7 @@
    A flow is a directed acyclic graph of states, sharing the same start and end
    states and connected by one or more transitions from one state to the next.
    Each transition is governed by a single test, which is specified as a
-   function.
+   function. These tests must be mutually exclusive.
 
    ---------------------------- STRUCTURE OF FLOWS ----------------------------
 
@@ -398,6 +398,21 @@ func (state *flowState) addOut(trans *transition) {
 	state.out = append(state.out, trans)
 }
 
+// hasTest checks whether any of the state's outbound transitions use the
+// specified test
+func (state *flowState) hasTest(test Test) bool {
+    return state.transitionWithTest(test) != nil
+}
+
+func (state *flowState) transitionWithTest(test Test) *transition {
+    for _, trans := range state.out {
+        if trans.test == test {
+            return trans
+        }
+    }
+    return nil
+}
+
 // root finds the root state of the flow, starting from the given state.
 func (state *flowState) root() *flowState {
 	if len(state.in) == 0 {
@@ -441,22 +456,37 @@ func (state *flowState) doCopy(stateCopies map[*flowState]*flowState) *flowState
 // addOrStates provides the functionality for recursively building a tree of
 // states that model an OR condition.
 func (state *flowState) addOrStates(left *flowState, right *flowState, end *flowState) {
-	for _, trans := range left.out {
-		atEnd := len(trans.to.out) == 0
-		var next *flowState
-		if atEnd {
+    for _, trans := range left.out {
+        atEnd := len(trans.to.out) == 0
+        var next *flowState
+        var nextLeft = trans.to
+        var nextRight = right
+        
+        if right.hasTest(trans.test) {
+            // The right branch has a transition with this same test.
+            // Merge them by creating a new template state that combines
+            // the outbound transitions from both left and right.
+            nextRight = right.transitionWithTest(trans.test).to
+        }
+        
+    	if atEnd {
 			next = end
 		} else {
 			next = new(flowState)
 		}
-		newTrans := &transition{test: trans.test, from: state, to: next}
+    
+    	newTrans := &transition{test: trans.test, from: state, to: next}
 		state.addOut(newTrans)
 		next.addIn(newTrans)
 		if !atEnd {
-			next.addOrStates(trans.to, right, end)
+			next.addOrStates(nextLeft, nextRight, end)
 		}
 	}
 	for _, trans := range right.out {
+	    if left.hasTest(trans.test) {
+	       // This would have already been handled in the left branch.  Skip it.
+	       continue
+	    }
 		atEnd := len(trans.to.out) == 0
 		var next *flowState
 		if atEnd {

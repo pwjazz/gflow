@@ -9,7 +9,7 @@
    A flow is a directed acyclic graph of states, sharing the same start and end
    states and connected by one or more transitions from one state to the next.
    Each transition is governed by a single test, which is specified as a
-   function.
+   function. These tests must be mutually exclusive.
 
    ---------------------------- STRUCTURE OF FLOWS ----------------------------
 

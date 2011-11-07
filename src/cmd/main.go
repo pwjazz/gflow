@@ -85,6 +85,18 @@ func main() {
 
 	flow = a.AND(b).OR(c.AND(d)).DO(result)
 	advance("a.AND(b).OR(c.AND(d))", []string{A, D, C})
+	
+	flow = a.AND(b).OR(a.AND(c)).DO(result)
+    advance("a.AND(b).OR(a.AND(c))", []string{A, D, C})
 
+    flow = a.AND(b).OR(a.AND(c)).DO(result)
+    advance("a.AND(b).OR(a.AND(c))", []string{A, D, B})
+    
+    flow = a.OR(a.AND(c)).DO(result)
+    advance("a.OR(a.AND(c))", []string{A, C})
+    
+    flow = a.OR(a.AND(c)).DO(result)
+    advance("a.OR(a.AND(c))", []string{C, A})
+    
 	fmt.Println("----- FINISHED -----")
 }
