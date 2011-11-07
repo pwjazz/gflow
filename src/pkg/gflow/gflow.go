@@ -3,6 +3,7 @@
 
 /*
    --------------------------------- OVERVIEW ---------------------------------
+
    Package gflow provides a mechanism for defining and processing
    event-driven flows, which we'll just call 'flows'. These flows are
    immutable and side-effect free, making them safe to use in multi-threaded
@@ -15,6 +16,7 @@
    function.
 
    ---------------------------- STRUCTURE OF FLOWS ----------------------------
+
    Let a, b, c ... equal a set of tests for advancing a flow
    Let A, B, C ... equal a set of events that pass the respective tests
    Let @ equal a state
