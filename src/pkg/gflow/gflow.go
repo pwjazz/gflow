@@ -95,7 +95,7 @@
    // Define tests.  Tests are functions that accept an EventData and
    // return a bool.  EventData is the empty interface, meaning it can be
    // any type of value.
-   
+
    // In our example, we're just using strings as our EventData.
 
    var a gflow.Test = func(data gflow.EventData) bool {
@@ -220,7 +220,7 @@ type Test func(data EventData) bool
 type Action func(data EventData)
 
 // EventData any object
-type EventData interface {}
+type EventData interface{}
 
 // flowState represents a state in the flow, including inbound and outbound
 // transitions and, if applicable, the Action executed when this flowState is
@@ -401,16 +401,16 @@ func (state *flowState) addOut(trans *transition) {
 // hasTest checks whether any of the state's outbound transitions use the
 // specified test
 func (state *flowState) hasTest(test Test) bool {
-    return state.transitionWithTest(test) != nil
+	return state.transitionWithTest(test) != nil
 }
 
 func (state *flowState) transitionWithTest(test Test) *transition {
-    for _, trans := range state.out {
-        if trans.test == test {
-            return trans
-        }
-    }
-    return nil
+	for _, trans := range state.out {
+		if trans.test == test {
+			return trans
+		}
+	}
+	return nil
 }
 
 // root finds the root state of the flow, starting from the given state.
@@ -456,26 +456,26 @@ func (state *flowState) doCopy(stateCopies map[*flowState]*flowState) *flowState
 // addOrStates provides the functionality for recursively building a tree of
 // states that model an OR condition.
 func (state *flowState) addOrStates(left *flowState, right *flowState, end *flowState) {
-    for _, trans := range left.out {
-        atEnd := len(trans.to.out) == 0
-        var next *flowState
-        var nextLeft = trans.to
-        var nextRight = right
-        
-        if right.hasTest(trans.test) {
-            // The right branch has a transition with this same test.
-            // Merge them by creating a new template state that combines
-            // the outbound transitions from both left and right.
-            nextRight = right.transitionWithTest(trans.test).to
-        }
-        
-    	if atEnd {
+	for _, trans := range left.out {
+		atEnd := len(trans.to.out) == 0
+		var next *flowState
+		var nextLeft = trans.to
+		var nextRight = right
+
+		if right.hasTest(trans.test) {
+			// The right branch has a transition with this same test.
+			// Merge them by creating a new template state that combines
+			// the outbound transitions from both left and right.
+			nextRight = right.transitionWithTest(trans.test).to
+		}
+
+		if atEnd {
 			next = end
 		} else {
 			next = new(flowState)
 		}
-    
-    	newTrans := &transition{test: trans.test, from: state, to: next}
+
+		newTrans := &transition{test: trans.test, from: state, to: next}
 		state.addOut(newTrans)
 		next.addIn(newTrans)
 		if !atEnd {
@@ -483,10 +483,10 @@ func (state *flowState) addOrStates(left *flowState, right *flowState, end *flow
 		}
 	}
 	for _, trans := range right.out {
-	    if left.hasTest(trans.test) {
-	       // This would have already been handled in the left branch.  Skip it.
-	       continue
-	    }
+		if left.hasTest(trans.test) {
+			// This would have already been handled in the left branch.  Skip it.
+			continue
+		}
 		atEnd := len(trans.to.out) == 0
 		var next *flowState
 		if atEnd {
