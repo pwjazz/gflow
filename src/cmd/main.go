@@ -101,5 +101,8 @@ func main() {
     flow = a.OR(a.THEN(c)).DO(result)
     advance("a.OR(a.THEN(c))", []string{C, A})
     
+    flow = a.OR(c.THEN(a)).DO(result)
+    advance("a.OR(c.THEN(a))", []string{C, A})
+    
 	fmt.Println("----- FINISHED -----")
 }

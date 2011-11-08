@@ -19,8 +19,8 @@
 
    Let a, b, c ... equal a set of tests for advancing a flow
    Let A, B, C ... equal a set of events that pass the respective tests
-   Let @ equal a state
-   Let --a-->, --b-->, ... equal transitions dependent on events a, b, etc.
+   Let @ represent a state
+   Let --a-->, --b-->, ... represent transitions dependent on events a, b, etc.
    Let A -> B -> C -> ... represent a sequence of events
 
    For example, the below is a diagram of a 2-state flow with a single test 'a'
@@ -96,7 +96,7 @@
    // return a bool.  EventData is the empty interface, meaning it can be
    // any type of value.
    
-   // In our example, we're just using strings as our EventData
+   // In our example, we're just using strings as our EventData.
 
    var a gflow.Test = func(data gflow.EventData) bool {
        return "A" == data.(string)
@@ -173,7 +173,7 @@
    // state referred to by subFlow1 before the assignment has not changed.  So,
    // any in-flight processes based on that flow can continue unhampered.
 
-   // The same property of thread-safety holds true for Advance()
+   // The same property of thread-safety holds true for Advance().
 
    state1 := flow.Advance(eventA)
    state2 := flow.Advance(eventA)
