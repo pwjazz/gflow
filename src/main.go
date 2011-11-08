@@ -6,7 +6,7 @@ import (
 )
 
 func main() {
-	var makeTest = func(val string) gflow.Test {
+    var makeTest = func(val string) gflow.Test {
 		return func(data gflow.EventData) bool {
 			fmt.Println(val+"?", data)
 			return data.(string) == val
