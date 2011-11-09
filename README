@@ -1,4 +1,4 @@
-   --------------------------------- OVERVIEW ---------------------------------
+--------------------------------- OVERVIEW ---------------------------------
 
    Package gflow provides a mechanism for defining and processing
    event-driven flows, which we'll just call 'flows'. These flows are
@@ -91,7 +91,7 @@
    // Define tests.  Tests are functions that accept an EventData and
    // return a bool.  EventData is the empty interface, meaning it can be
    // any type of value.
-   
+
    // In our example, we're just using strings as our EventData.
 
    var a gflow.Test = func(data gflow.EventData) bool {

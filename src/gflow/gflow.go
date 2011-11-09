@@ -222,35 +222,35 @@ type Action func(data EventData)
 // EventData any object
 type EventData interface{}
 
-// flowState represents a state in the flow, including inbound and outbound
-// transitions and, if applicable, the Action executed when this flowState is
+// State represents a state in the flow, including inbound and outbound
+// transitions and, if applicable, the Action executed when this State is
 // reached.
-type flowState struct {
+type State struct {
 	ID          int
 	in          []*transition
 	out         []*transition
-	andedStates []*flowState
+	andedStates []*State
 	action      Action
 }
 
-// stateSource is any object that can be converted into a flowState.
+// stateSource is any object that can be converted into a State.
 // Test objects are stateSources, meaning that a Test can be treated
-// the same as a flowState.
+// the same as a State.
 type stateSource interface {
-	state() *flowState
+	state() *State
 }
 
-// transition represents a transition from one flowState to another flowState
+// transition represents a transition from one State to another State
 // contingent on a given Test.
 type transition struct {
 	test Test
-	from *flowState
-	to   *flowState
+	from *State
+	to   *State
 }
 
 // THEN constructs a sequential flow which terminates when the from and to
-// flowStates are reached in sequence. 
-func (from *flowState) THEN(to stateSource) *flowState {
+// States are reached in sequence. 
+func (from *State) THEN(to stateSource) *State {
 	newFrom := from.copy()
 	toState := to.state().copy()
 	for _, trans := range toState.root().out {
@@ -259,7 +259,7 @@ func (from *flowState) THEN(to stateSource) *flowState {
 	return toState
 }
 
-func (from Test) THEN(to stateSource) *flowState {
+func (from Test) THEN(to stateSource) *State {
 	return from.state().THEN(to)
 }
 
@@ -269,12 +269,12 @@ func (from Test) THEN(to stateSource) *flowState {
 
    OR is commutative - a.OR(b) is the same as b.OR(a)
 */
-func (state *flowState) OR(other stateSource) *flowState {
+func (state *State) OR(other stateSource) *State {
 	otherState := other.state()
 	// Create a common start node
-	start := new(flowState)
+	start := new(State)
 	// Create a common end node
-	end := new(flowState)
+	end := new(State)
 
 	root := state.root()
 	otherRoot := otherState.root()
@@ -283,7 +283,7 @@ func (state *flowState) OR(other stateSource) *flowState {
 	return end
 }
 
-func (test Test) OR(other stateSource) *flowState {
+func (test Test) OR(other stateSource) *State {
 	return test.state().OR(other)
 }
 
@@ -293,12 +293,12 @@ func (test Test) OR(other stateSource) *flowState {
 
    AND is commutative - a.AND(b) is the same as b.AND(a)
 */
-func (state *flowState) AND(other stateSource) *flowState {
+func (state *State) AND(other stateSource) *State {
 	otherState := other.state()
 	// Create a common start node
-	start := new(flowState)
+	start := new(State)
 	// Create a common end node
-	end := new(flowState)
+	end := new(State)
 
 	andedStates := state.andedStates
 	if len(andedStates) == 0 {
@@ -307,7 +307,7 @@ func (state *flowState) AND(other stateSource) *flowState {
 	andedStates = append(andedStates, otherState)
 	end.andedStates = andedStates
 
-	andedRoots := make([]*flowState, len(andedStates))
+	andedRoots := make([]*State, len(andedStates))
 	for i, state := range andedStates {
 		andedRoots[i] = state.root()
 	}
@@ -317,24 +317,24 @@ func (state *flowState) AND(other stateSource) *flowState {
 	return end
 }
 
-func (test Test) AND(other stateSource) *flowState {
+func (test Test) AND(other stateSource) *State {
 	return test.state().AND(other)
 }
 
 // DO registers the given action to fire when the state is reached.
-func (state *flowState) DO(action Action) *flowState {
+func (state *State) DO(action Action) *State {
 	state.action = action
 	return state
 }
 
-// Start starts a new flow from the root of the given flowState.
-func (state *flowState) Build() *flowState {
+// Start starts a new flow from the root of the given State.
+func (state *State) Build() *State {
 	root := state.root()
 	root.assignIds(0)
 	return root
 }
 
-func (state *flowState) Advance(data EventData) *flowState {
+func (state *State) Advance(data EventData) *State {
 	// Go through outbound transitions and see which pass the test
 	for _, tran := range state.out {
 		if tran.test(data) {
@@ -350,7 +350,7 @@ func (state *flowState) Advance(data EventData) *flowState {
 	return state
 }
 
-func (state *flowState) FindByID(id int) *flowState {
+func (state *State) FindByID(id int) *State {
 	if state.ID == id {
 		return state
 	}
@@ -364,20 +364,20 @@ func (state *flowState) FindByID(id int) *flowState {
 }
 
 // Finished indicates whether or not the flow is finished.
-func (state *flowState) Finished() bool {
+func (state *State) Finished() bool {
 	return len(state.out) == 0
 }
 
 /* PRIVATE FUNCTIONS */
-// state is provided to make flowState itself a StateSource.
-func (state *flowState) state() *flowState {
+// state is provided to make State itself a StateSource.
+func (state *State) state() *State {
 	return state
 }
 
 // state is provided to make test behave as a StateSource.
-func (test Test) state() *flowState {
-	from := new(flowState)
-	to := new(flowState)
+func (test Test) state() *State {
+	from := new(State)
+	to := new(State)
 	trans := &transition{test: test, from: from, to: to}
 	to.addIn(trans)
 	from.addOut(trans)
@@ -386,25 +386,25 @@ func (test Test) state() *flowState {
 
 // addIn adds an inbound transition to the given state, updating the
 // transition to reference the state as its "to".
-func (state *flowState) addIn(trans *transition) {
+func (state *State) addIn(trans *transition) {
 	trans.to = state
 	state.in = append(state.in, trans)
 }
 
 // addOut adds an outbound transition to the given state, updating the
 // transition to reference the state as its "from"
-func (state *flowState) addOut(trans *transition) {
+func (state *State) addOut(trans *transition) {
 	trans.from = state
 	state.out = append(state.out, trans)
 }
 
 // hasTest checks whether any of the state's outbound transitions use the
 // specified test
-func (state *flowState) hasTest(test Test) bool {
+func (state *State) hasTest(test Test) bool {
 	return state.transitionWithTest(test) != nil
 }
 
-func (state *flowState) transitionWithTest(test Test) *transition {
+func (state *State) transitionWithTest(test Test) *transition {
 	for _, trans := range state.out {
 		if trans.test == test {
 			return trans
@@ -414,7 +414,7 @@ func (state *flowState) transitionWithTest(test Test) *transition {
 }
 
 // root finds the root state of the flow, starting from the given state.
-func (state *flowState) root() *flowState {
+func (state *State) root() *State {
 	if len(state.in) == 0 {
 		return state
 	}
@@ -423,20 +423,26 @@ func (state *flowState) root() *flowState {
 
 // copy makes a deep copy of the given state.  The copy is deep because
 // all transitively referenced states (inbound and outbound) are copied also.
-func (state *flowState) copy() *flowState {
-	stateCopies := make(map[*flowState]*flowState)
+func (state *State) copy() *State {
+	stateCopies := make(map[*State]*State)
 
 	state.root().doCopy(stateCopies)
 
 	return stateCopies[state]
 }
 
-func (state *flowState) doCopy(stateCopies map[*flowState]*flowState) *flowState {
+func (state *State) PubCopy() *State {
+	return state.copy()
+}
+
+func (state *State) doCopy(stateCopies map[*State]*State) *State {
 	stateCopy := stateCopies[state]
-	if stateCopy == nil {
-		stateCopy = new(flowState)
-		stateCopies[state] = stateCopy
+	if stateCopy != nil {
+		return stateCopy
 	}
+
+	stateCopy = new(State)
+	stateCopies[state] = stateCopy
 
 	for _, out := range state.out {
 		newTo := out.to.doCopy(stateCopies)
@@ -446,19 +452,27 @@ func (state *flowState) doCopy(stateCopies map[*flowState]*flowState) *flowState
 	}
 
 	for _, andedState := range state.andedStates {
-		stateCopy.andedStates = append(stateCopy.andedStates, stateCopies[andedState])
+		stateCopy.andedStates = append(stateCopy.andedStates, andedState.doCopy(stateCopies))
 	}
 
 	stateCopy.action = state.action
 	return stateCopy
 }
 
+func (state *State) CountChildren() int {
+	count := len(state.out)
+	for _, trans := range state.out {
+		count += trans.to.CountChildren()
+	}
+	return count
+}
+
 // addOrStates provides the functionality for recursively building a tree of
 // states that model an OR condition.
-func (state *flowState) addOrStates(left *flowState, right *flowState, end *flowState) {
+func (state *State) addOrStates(left *State, right *State, end *State) {
 	for _, trans := range left.out {
 		atEnd := len(trans.to.out) == 0
-		var next *flowState
+		var next *State
 		var nextLeft = trans.to
 		var nextRight = right
 
@@ -466,13 +480,18 @@ func (state *flowState) addOrStates(left *flowState, right *flowState, end *flow
 			// The right branch has a transition with this same test.
 			// Merge them by creating a new template state that combines
 			// the outbound transitions from both left and right.
-			nextRight = right.transitionWithTest(trans.test).to
+			rightTrans := right.transitionWithTest(trans.test)
+			if len(rightTrans.to.out) == 0 {
+				atEnd = true
+			} else {
+				nextRight = rightTrans.to
+			}
 		}
 
 		if atEnd {
 			next = end
 		} else {
-			next = new(flowState)
+			next = new(State)
 		}
 
 		newTrans := &transition{test: trans.test, from: state, to: next}
@@ -488,11 +507,11 @@ func (state *flowState) addOrStates(left *flowState, right *flowState, end *flow
 			continue
 		}
 		atEnd := len(trans.to.out) == 0
-		var next *flowState
+		var next *State
 		if atEnd {
 			next = end
 		} else {
-			next = new(flowState)
+			next = new(State)
 		}
 		newTrans := &transition{test: trans.test, from: state, to: next}
 		state.addOut(newTrans)
@@ -505,7 +524,7 @@ func (state *flowState) addOrStates(left *flowState, right *flowState, end *flow
 
 // addAndStates provides the functionality for recursively building a tree of
 // states that model an AND condition.
-func (state *flowState) addAndStates(andedStates []*flowState, end *flowState) {
+func (state *State) addAndStates(andedStates []*State, end *State) {
 	atEnd := true
 	totalOuts := 0
 	for _, andedState := range andedStates {
@@ -514,11 +533,11 @@ func (state *flowState) addAndStates(andedStates []*flowState, end *flowState) {
 	for i, andedState := range andedStates {
 		for _, trans := range andedState.out {
 			atEnd = false
-			next := new(flowState)
+			next := new(State)
 			newTrans := &transition{test: trans.test, from: state, to: next}
 			state.addOut(newTrans)
 			next.addIn(newTrans)
-			var nextAndedStates []*flowState
+			var nextAndedStates []*State
 			nextAndedStates = replace(andedStates, i, trans.to)
 			next.addAndStates(nextAndedStates, end)
 		}
@@ -531,7 +550,7 @@ func (state *flowState) addAndStates(andedStates []*flowState, end *flowState) {
 	}
 }
 
-func (state *flowState) assignIds(startingId int) int {
+func (state *State) assignIds(startingId int) int {
 	currentId := startingId + 1
 	state.ID = currentId
 	for _, trans := range state.out {
@@ -542,8 +561,8 @@ func (state *flowState) assignIds(startingId int) int {
 
 // replace replaces the state at the given position in the given state slice
 // with the given state.
-func replace(states []*flowState, index int, state *flowState) []*flowState {
-	var result []*flowState
+func replace(states []*State, index int, state *State) []*State {
+	var result []*State
 	result = append(result, states[0:index]...)
 	result = append(result, state)
 	result = append(result, states[index+1:len(states)]...)
