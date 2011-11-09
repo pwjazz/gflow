@@ -1,0 +1,4 @@
+#!/bin/bash
+
+bin/compile
+bin/gflow
