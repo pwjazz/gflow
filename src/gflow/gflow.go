@@ -459,10 +459,10 @@ func (state *State) doCopy(stateCopies map[*State]*State) *State {
 	return stateCopy
 }
 
-func (state *State) CountChildren() int {
+func (state *State) countChildren() int {
 	count := len(state.out)
 	for _, trans := range state.out {
-		count += trans.to.CountChildren()
+		count += trans.to.countChildren()
 	}
 	return count
 }

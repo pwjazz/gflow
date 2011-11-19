@@ -16,6 +16,7 @@ var a Test = makeTest(A)
 var b Test = makeTest(B)
 var c Test = makeTest(C)
 var d Test = makeTest(D)
+var e Test = makeTest(D)
 
 var A string = "A"
 var B string = "B"
@@ -112,7 +113,7 @@ var tests []flowTest = []flowTest{
 func TestIT(t *testing.T) {
 
 	var doTest = func(test flowTest) {
-		succeeded := false
+	    succeeded := false
 
 		var done = func(data EventData) {
 			succeeded = true
@@ -121,7 +122,8 @@ func TestIT(t *testing.T) {
 
 		fmt.Println("----- TESTING ", test.label, " ------")
 		flowDefinition := test.flow.DO(done).Build()
-		currentId := flowDefinition.ID
+		fmt.Println("Number of nodes", flowDefinition.countChildren())
+        currentId := flowDefinition.ID
 		for _, key := range test.steps {
 			state := flowDefinition.FindByID(currentId)
 			if !state.Finished() {
